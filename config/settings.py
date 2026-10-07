@@ -8,6 +8,15 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    'https://django-code-pypc.onrender.com',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 INSTALLED_APPS = [
     'daphne',
     'django.contrib.admin',
