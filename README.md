@@ -77,7 +77,7 @@ Ochilgan forma oynasida quyidagi parametrlarni aniq kiriting:
 * **Runtime:** `Python 3`
 * **Build Command:**
   ```bash
-  pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --no-input
+  pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --no-input && python manage.py shell -c "from django.contrib.auth import get_user_model; U=get_user_model(); U.objects.filter(username='admin').exists() or U.objects.create_superuser('admin','admin@example.com','parol123'); from rooms.models import Room; Room.objects.get_or_create(slug='django-orm', defaults={'title':'Django ORM','folder_name':'room_django_orm','order':1}); Room.objects.get_or_create(slug='django-views', defaults={'title':'Django Views','folder_name':'room_django_views','order':2})"
   ```
 * **Start Command:**
   ```bash
@@ -105,20 +105,11 @@ Sahifaning pastki qismidagi **Advanced** yoki **Environment Variables** bo'limig
 
 ---
 
-### 6-qadam: Boshlang'ich xonalarni yaratish
-Render'dagi yangi SQLite bazada boshlang'ich xonalar paydo bo'lishi uchun:
-1. Render dashboardida xizmatingiz sahifasidagi **Shell** yorlig'iga (tabiga) o'ting.
-2. Shell konsolida quyidagi buyruqni bering:
-   ```bash
-   python manage.py shell
-   ```
-3. Shell ichida quyidagi kodni kiritib Enter bosing:
-   ```python
-   from rooms.models import Room
-   Room.objects.get_or_create(title="Django ORM va Ma'lumotlar Bazasi", slug="django-orm", folder_name="room_django_orm", order=1, description="Django ORM amaliyoti")
-   Room.objects.get_or_create(title="Django Views va URL Routing", slug="django-views", folder_name="room_django_views", order=2, description="Views va shablonlar amaliyoti")
-   exit()
-   ```
+### 6-qadam: Admin panelga kirish
+Build jarayoni davomida tizim avtomatik ravishda superuser va boshlang'ich xonalarni yaratadi:
+- **Admin panel manzili:** `https://sizning-sayt.onrender.com/admin/`
+- **Login:** `admin`
+- **Parol:** `parol123` *(agar Build Command'da o'zgartirmagan bo'lsangiz)*
 
 ---
 

@@ -2,7 +2,7 @@ services:
   - type: web
     name: django-code
     runtime: python
-    buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --no-input
+    buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --no-input && python manage.py shell -c "from django.contrib.auth import get_user_model; U=get_user_model(); U.objects.filter(username='admin').exists() or U.objects.create_superuser('admin','admin@example.com','parol123'); from rooms.models import Room; Room.objects.get_or_create(slug='django-orm', defaults={'title':'Django ORM','folder_name':'room_django_orm','order':1}); Room.objects.get_or_create(slug='django-views', defaults={'title':'Django Views','folder_name':'room_django_views','order':2})"
     startCommand: daphne -b 0.0.0.0 -p $PORT config.asgi:application
     envVars:
       - key: PYTHON_VERSION
