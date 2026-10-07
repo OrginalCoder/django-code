@@ -11,4 +11,5 @@ urlpatterns = [
     path('api/<slug:room_slug>/save/', views.api_save_file, name='api_save_file'),
     path('api/<slug:room_slug>/create/', views.api_create_file, name='api_create_file'),
     path('api/<slug:room_slug>/delete/', views.api_delete_file, name='api_delete_file'),
+    path('api/version/', views.api_version, name='api_version'),
 ]

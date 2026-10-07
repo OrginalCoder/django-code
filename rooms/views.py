@@ -134,3 +134,11 @@ def api_delete_file(request, room_slug):
         return JsonResponse({"success": False, "error": str(e)}, status=403)
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def api_version(request):
+    from django.conf import settings
+    return JsonResponse({
+        "status": "ok",
+        "csrf_trusted_origins": getattr(settings, 'CSRF_TRUSTED_ORIGINS', []),
+    })
