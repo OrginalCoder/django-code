@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views
 
 app_name = 'rooms'
@@ -12,4 +12,6 @@ urlpatterns = [
     path('api/<slug:room_slug>/create/', views.api_create_file, name='api_create_file'),
     path('api/<slug:room_slug>/delete/', views.api_delete_file, name='api_delete_file'),
     path('api/version/', views.api_version, name='api_version'),
+    path('preview', views.preview_redirect, name='preview_redirect'),
+    re_path(r'^preview/(?P<subpath>.*)$', views.preview_proxy, name='preview_proxy'),
 ]

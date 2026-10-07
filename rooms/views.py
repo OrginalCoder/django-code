@@ -1,6 +1,9 @@
 import json
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponseBadRequest
+import re
+import urllib.request
+import urllib.error
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.http import require_http_methods
 from .models import Room
 from ide_backend import file_manager
@@ -142,3 +145,115 @@ def api_version(request):
         "status": "ok",
         "csrf_trusted_origins": getattr(settings, 'CSRF_TRUSTED_ORIGINS', []),
     })
+
+
+def preview_redirect(request):
+    return redirect('/preview/')
+
+
+def preview_proxy(request, subpath=""):
+    target_url = f"http://127.0.0.1:8001/{subpath}"
+    query = request.META.get('QUERY_STRING', '')
+    if query:
+        target_url = f"{target_url}?{query}"
+
+    headers = {
+        'User-Agent': request.META.get('HTTP_USER_AGENT', 'Django-Code-Preview'),
+        'Accept': request.META.get('HTTP_ACCEPT', '*/*'),
+        'Host': '127.0.0.1:8001',
+    }
+    if 'HTTP_COOKIE' in request.META:
+        headers['Cookie'] = request.META['HTTP_COOKIE']
+    if 'CONTENT_TYPE' in request.META:
+        headers['Content-Type'] = request.META['CONTENT_TYPE']
+    elif 'HTTP_CONTENT_TYPE' in request.META:
+        headers['Content-Type'] = request.META['HTTP_CONTENT_TYPE']
+
+    body = request.body if request.method in ['POST', 'PUT', 'PATCH'] else None
+
+    req = urllib.request.Request(target_url, data=body, headers=headers, method=request.method)
+
+    try:
+        with urllib.request.urlopen(req, timeout=8) as response:
+            content = response.read()
+            content_type = response.headers.get('Content-Type', 'text/html')
+
+            if 'text/html' in content_type.lower():
+                try:
+                    html_text = content.decode('utf-8', errors='replace')
+                    html_text = re.sub(r'href="/(?!preview/)', 'href="/preview/', html_text)
+                    html_text = re.sub(r"href='/(?!preview/)", "href='/preview/", html_text)
+                    html_text = re.sub(r'src="/(?!preview/)', 'src="/preview/', html_text)
+                    html_text = re.sub(r"src='/(?!preview/)", "src='/preview/", html_text)
+                    html_text = re.sub(r'action="/(?!preview/)', 'action="/preview/', html_text)
+                    html_text = re.sub(r"action='/(?!preview/)", "action='/preview/", html_text)
+                    content = html_text.encode('utf-8')
+                except Exception:
+                    pass
+
+            resp = HttpResponse(content, status=response.status, content_type=content_type)
+            for k, v in response.headers.items():
+                if k.lower() == 'location':
+                    if v.startswith('http://127.0.0.1:8001/'):
+                        resp['Location'] = v.replace('http://127.0.0.1:8001/', '/preview/')
+                    elif v.startswith('/') and not v.startswith('/preview/'):
+                        resp['Location'] = f"/preview{v}"
+                    else:
+                        resp['Location'] = v
+                elif k.lower() == 'set-cookie':
+                    resp['Set-Cookie'] = v
+                elif k.lower() not in ['content-length', 'transfer-encoding', 'connection']:
+                    resp[k] = v
+            return resp
+
+    except urllib.error.HTTPError as e:
+        err_content = e.read()
+        err_type = e.headers.get('Content-Type', 'text/html')
+        resp = HttpResponse(err_content, status=e.code, content_type=err_type)
+        for k, v in e.headers.items():
+            if k.lower() not in ['content-length', 'transfer-encoding', 'connection']:
+                resp[k] = v
+        return resp
+
+    except Exception:
+        fallback_html = """<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loyiha ishga tushmagan - Django Code</title>
+    <style>
+        body { margin: 0; padding: 0; min-height: 100vh; background-color: #0b0f19; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; display: flex; align-items: center; justify-content: center; }
+        .box { background: #131b2e; border: 1px solid #1e293b; border-radius: 14px; padding: 36px; max-width: 520px; width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .icon { width: 52px; height: 52px; margin: 0 auto 18px; color: #38bdf8; }
+        h1 { font-size: 20px; font-weight: 700; margin: 0 0 12px; color: #f1f5f9; }
+        p { font-size: 14px; color: #94a3b8; line-height: 1.6; margin: 0 0 20px; }
+        .cmd { background: #070a13; border: 1px solid #1e293b; padding: 12px 16px; border-radius: 8px; font-family: monospace; color: #4ade80; font-size: 14px; margin-bottom: 24px; user-select: all; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: 600; font-size: 13px; border: none; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #1d4ed8; }
+        .countdown { margin-top: 18px; font-size: 12px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <h1>Loyiha hali ishga tushirilmadi</h1>
+        <p>Brauzerda saytingizni ko'rish uchun avval IDE terminalida quyidagi buyruqni bering:</p>
+        <div class="cmd">python manage.py runserver 8001</div>
+        <button class="btn" onclick="location.reload()">Sahifani yangilash</button>
+        <div class="countdown" id="cd">Avtomatik yangilanadi: 4s</div>
+    </div>
+    <script>
+        let s = 4;
+        setInterval(() => {
+            s--;
+            if (s <= 0) {
+                location.reload();
+            } else {
+                document.getElementById('cd').innerText = 'Avtomatik yangilanadi: ' + s + 's';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>"""
+        return HttpResponse(fallback_html, status=502, content_type='text/html')
