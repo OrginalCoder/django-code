@@ -1,0 +1,242 @@
+{% extends 'rooms/base.html' %}
+{% load static %}
+
+{% block title %}{{ room.title }} - Django Code Workspace{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/ide.css' %}" />
+{% endblock %}
+
+{% block nav_extra %}
+    <span class="text-slate-600 hidden sm:inline">/</span>
+    <div class="relative group">
+        <button class="flex items-center space-x-1.5 text-slate-200 hover:text-white font-medium py-1 px-1.5 md:px-2 rounded hover:bg-slate-800 transition max-w-[140px] sm:max-w-xs truncate">
+            <span class="truncate text-xs md:text-sm">{{ room.title }}</span>
+            <svg class="w-3 h-3 text-slate-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="absolute left-0 top-full mt-1 w-64 bg-[#0e1422] border border-[#1e293b] rounded-lg shadow-2xl py-1.5 hidden group-hover:block z-50">
+            <div class="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Boshqa xonalar</div>
+            {% for other in all_rooms %}
+                <a href="{% url 'rooms:workspace' other.slug %}" class="block px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-emerald-400 transition">
+                    {{ other.title }}
+                </a>
+            {% empty %}
+                <div class="px-3 py-2 text-xs text-slate-500">Boshqa xona yo'q</div>
+            {% endfor %}
+        </div>
+    </div>
+    <span class="text-[10px] md:text-[11px] text-slate-400 font-mono bg-[#090d16] px-1.5 md:px-2 py-0.5 rounded border border-[#1e293b] hidden lg:inline">
+        {{ folder_name }}
+    </span>
+{% endblock %}
+
+{% block nav_actions %}
+    <span id="save-status" class="text-emerald-400 text-xs font-mono mr-1 hidden md:inline"></span>
+
+    <button id="toggle-sidebar-mobile-btn" onclick="toggleSidebar()" title="Fayllar menyusi" class="md:hidden flex items-center justify-center p-1.5 rounded-lg bg-[#141c2c] hover:bg-[#1e293b] text-slate-300 border border-[#1e293b]">
+        <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+    </button>
+
+    <a href="http://127.0.0.1:8001/" target="_blank" rel="noopener noreferrer" title="Loyihangiz serveri (8001-port)" class="flex items-center space-x-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-2 md:px-2.5 py-1.5 rounded-lg text-xs transition shadow-sm">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+        <span class="hidden sm:inline">Loyihani ochish</span>
+        <span>(8001)</span>
+        <svg class="w-3 h-3 text-blue-200 hidden sm:inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+    </a>
+
+    <button id="save-file-btn" onclick="editor.saveCurrentFile()" class="flex items-center space-x-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-xs transition shadow-sm">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span class="hidden sm:inline">Saqlash</span>
+    </button>
+
+    <button id="toggle-term-btn" onclick="terminal.togglePanel()" title="Terminalni ko'rsatish/yashirish" class="flex items-center space-x-1 bg-[#141c2c] hover:bg-[#1e293b] text-slate-300 px-2 md:px-3 py-1.5 rounded-lg text-xs transition border border-[#1e293b]">
+        <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span class="hidden sm:inline">Terminal</span>
+    </button>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+
+<div class="ide-wrapper">
+    <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+
+    <div class="ide-main">
+        <aside class="ide-sidebar">
+            <div class="ide-sidebar-header">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                    <span>Loyiha Fayllari</span>
+                </span>
+                <div class="flex items-center gap-1">
+                    <button onclick="tree.promptCreate('file')" title="Yangi fayl" class="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    </button>
+                    <button onclick="tree.promptCreate('directory')" title="Yangi papka" class="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                    </button>
+                    <button onclick="tree.refresh()" title="Daraxtni yangilash" class="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                    </button>
+                    <button onclick="toggleSidebar(false)" title="Yopish" class="md:hidden p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="file-tree" class="ide-tree-container"></div>
+        </aside>
+
+        <section class="ide-editor-area">
+            <div id="editor-tabs" class="ide-tabs-bar"></div>
+
+            <div class="monaco-wrapper">
+                <div id="monaco-editor"></div>
+
+                <div id="empty-placeholder" class="empty-editor-placeholder">
+                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#0e1422] border border-[#1e293b] flex items-center justify-center text-slate-400 mb-2">
+                        <svg class="w-6 h-6 md:w-7 md:h-7 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    </div>
+                    <h3 class="text-xs md:text-sm font-semibold text-slate-200">Fayl tanlanmagan</h3>
+                    <p class="text-[11px] md:text-xs text-slate-500 max-w-sm text-center leading-relaxed">
+                        Chap menyudan faylni tanlang yoki terminalda yangi loyiha boshlang.
+                    </p>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="toggleSidebar(true)" class="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#141c2c] hover:bg-[#1e293b] rounded-lg text-xs text-emerald-400 border border-[#1e293b] transition">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                            <span>Fayllar ro'yxatini ochish</span>
+                        </button>
+                        <button onclick="tree.promptCreate('file')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#141c2c] hover:bg-[#1e293b] rounded-lg text-xs text-slate-300 border border-[#1e293b] transition">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            <span>Yangi fayl</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="terminal-resizer" class="ide-resizer hidden md:block" title="O'lchamni tortib o'zgartiring"></div>
+
+            <div id="terminal-panel" class="ide-terminal-panel">
+                <div class="terminal-header">
+                    <div class="flex items-center gap-2 md:gap-3">
+                        <div class="terminal-tab-item text-[10px] md:text-xs">
+                            <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                            <span>TERMINAL</span>
+                        </div>
+                        <div class="terminal-status-badge">
+                            <span id="terminal-status-dot" class="status-dot"></span>
+                            <span id="terminal-status-text">Ulanmoqda...</span>
+                        </div>
+                    </div>
+                    <div class="terminal-controls">
+                        <button onclick="terminal.clear()" title="Terminalni tozalash" class="terminal-btn">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                            <span class="hidden sm:inline">Tozalash</span>
+                        </button>
+                        <button onclick="terminal.connect()" title="Qayta ulanish" class="terminal-btn">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                            <span class="hidden sm:inline">Ulash</span>
+                        </button>
+                        <button id="terminal-max-btn" onclick="terminal.toggleMaximize()" title="Kattalashtirish" class="terminal-btn">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                        </button>
+                        <button onclick="terminal.togglePanel()" title="Yopish" class="terminal-btn">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="terminal-container" class="terminal-body"></div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="ide-statusbar">
+        <div class="flex items-center space-x-2 md:space-x-3 truncate">
+            <span class="flex items-center space-x-1 text-slate-400 truncate">
+                <svg class="w-3 h-3 text-slate-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                <span id="current-filepath" class="font-mono truncate">Fayl tanlanmagan</span>
+            </span>
+        </div>
+        <div class="flex items-center space-x-2 md:space-x-3 font-mono text-[10px] md:text-[11px] flex-shrink-0">
+            <span id="cursor-position">Ln 1, Col 1</span>
+            <span class="text-slate-700 hidden sm:inline">|</span>
+            <span class="hidden sm:inline">UTF-8</span>
+            <span class="text-slate-700">|</span>
+            <span id="current-language" class="text-emerald-400 font-semibold">PLAIN</span>
+            <span class="text-slate-700 hidden md:inline">|</span>
+            <span class="text-slate-500 hidden md:inline">Django Code</span>
+        </div>
+    </footer>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'js/ide_tree.js' %}"></script>
+    <script src="{% static 'js/ide_editor.js' %}"></script>
+    <script src="{% static 'js/ide_terminal.js' %}"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+
+    <script>
+        window.toggleSidebar = function(force) {
+            const sidebar = document.querySelector('.ide-sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if (!sidebar) return;
+            const isOpen = typeof force === 'boolean' ? force : !sidebar.classList.contains('is-open');
+            if (isOpen) {
+                sidebar.classList.add('is-open');
+                if (backdrop) backdrop.classList.add('is-open');
+            } else {
+                sidebar.classList.remove('is-open');
+                if (backdrop) backdrop.classList.remove('is-open');
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const roomSlug = "{{ room.slug }}";
+            const initialTreeData = {{ initial_tree|safe }};
+
+            window.editor = new IDEEditor({
+                roomSlug: roomSlug,
+                containerId: 'monaco-editor',
+                tabsContainerId: 'editor-tabs',
+                placeholderId: 'empty-placeholder',
+                onActiveFileChange: (path) => {
+                    if (window.tree) {
+                        window.tree.setActive(path);
+                    }
+                }
+            });
+
+            window.tree = new IDETree({
+                roomSlug: roomSlug,
+                containerId: 'file-tree',
+                initialTree: initialTreeData,
+                onFileSelect: (path) => {
+                    window.editor.openFile(path);
+                    if (window.innerWidth < 768) {
+                        window.toggleSidebar(false);
+                    }
+                }
+            });
+
+            window.terminal = new IDETerminal({
+                roomSlug: roomSlug,
+                containerId: 'terminal-container',
+                panelId: 'terminal-panel',
+                resizerId: 'terminal-resizer'
+            });
+
+            setInterval(() => {
+                if (window.tree) {
+                    window.tree.refresh();
+                }
+            }, 3500);
+        });
+    </script>
+{% endblock %}
