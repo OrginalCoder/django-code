@@ -1,5 +1,6 @@
 django>=5.0
 channels>=4.0
 daphne>=4.0
+whitenoise>=6.0
 pywinpty>=2.0; sys_platform == 'win32'
 ptyprocess>=0.7.0; sys_platform != 'win32'

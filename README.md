@@ -77,7 +77,7 @@ Ochilgan forma oynasida quyidagi parametrlarni aniq kiriting:
 * **Runtime:** `Python 3`
 * **Build Command:**
   ```bash
-  pip install -r requirements.txt && python manage.py migrate
+  pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --no-input
   ```
 * **Start Command:**
   ```bash
